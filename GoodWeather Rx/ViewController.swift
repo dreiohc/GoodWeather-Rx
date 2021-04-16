@@ -29,27 +29,56 @@ class ViewController: UIViewController {
   
   // MARK: - API
   
-  
+  // Fetching API with Error handler, Retry and Driver.
   private func fetchWeather(by city: String) {
     let url = WEATHER_CITY_URL(city: city)
     let resource = Resource<WeatherResult>(url: url)
     
     let search = URLRequest
       .load(resource: resource)
-      .observeOn(MainScheduler.instance)    // This scheduler is usually used to perform UI work.
+      .observeOn(MainScheduler.instance)  // This scheduler is usually used to perform UI work.
+      .retry(3)                           // Retry for RxSwift. Really powerful API.
+      .catchError { error in
+        print("DEBUG: Error in API: \(error.localizedDescription)")
+        return Observable.just(WeatherResult.empty)     // If error is API.
+      }
+      .asDriver(onErrorJustReturn: WeatherResult.empty) // If error is about driver.
+    
+    search
+      .map { "\($0.main.temp) ℉" }       // map to get temp values only.
+      .drive(temperatureLabel.rx.text)   // Use driver to textfield. Almost same as Bind.
+      .disposed(by: disposeBag)
+    
+    search
+      .map { "\($0.main.humidity)" }
+      .drive(humidityLabel.rx.text)
+      .disposed(by: disposeBag)
+
+  }
+
+  
+  // Fetching API using Driver.
+  private func fetchWeather3(by city: String) {
+    let url = WEATHER_CITY_URL(city: city)
+    let resource = Resource<WeatherResult>(url: url)
+    
+    let search = URLRequest
+      .load(resource: resource)
+      .observeOn(MainScheduler.instance)   // This scheduler is usually used to perform UI work.
       .asDriver(onErrorJustReturn: WeatherResult.empty)
     
     search
-      .map { "\($0?.main.temp ?? 0.0) ℉" }    // map to get temp values only.
+      .map { "\($0.main.temp) ℉" }         // map to get temp values only.
       .drive(temperatureLabel.rx.text)     // Use driver to textfield. Almost same as Bind.
       .disposed(by: disposeBag)
     
     search
-      .map { "\($0?.main.humidity ?? 0.0)" }
+      .map { "\($0.main.humidity)" }
       .drive(humidityLabel.rx.text)
       .disposed(by: disposeBag)
   }
   
+  // Fetching API using Bind.
   private func fetchWeather2(by city: String) {
     let url = WEATHER_CITY_URL(city: city)
     let resource = Resource<WeatherResult>(url: url)
@@ -60,16 +89,18 @@ class ViewController: UIViewController {
       .catchErrorJustReturn(WeatherResult.empty)
 
     search
-      .map { "\($0?.main.temp ?? 0.0) ℉" }    // map to get temp values only.
-      .bind(to: temperatureLabel.rx.text)     // Bind to textfield.
+      .map { "\($0.main.temp) ℉" }         // map to get temp values only.
+      .bind(to: temperatureLabel.rx.text)  // Bind to textfield.
       .disposed(by: disposeBag)
     
     search
-      .map { "\($0?.main.humidity ?? 0.0)" }
+      .map { "\($0.main.humidity)" }
       .bind(to: humidityLabel.rx.text)
       .disposed(by: disposeBag)
   }
   
+  
+  // Fetching API using normal method.
   private func fetchWeather1(by city: String) {
     let url = WEATHER_CITY_URL(city: city)
     let resource = Resource<WeatherResult>(url: url)
@@ -79,10 +110,8 @@ class ViewController: UIViewController {
       .observeOn(MainScheduler.instance)    // This scheduler is usually used to perform UI work.
       .catchErrorJustReturn(WeatherResult.empty)
       .subscribe(onNext: { result in
-        if let result = result {
-          let weather = result.main
-          self.displayWeather(weather)
-        }
+        let weather = result.main
+        self.displayWeather(weather)
       })
       .disposed(by: disposeBag)
   }
