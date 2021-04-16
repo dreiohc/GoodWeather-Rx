@@ -1,0 +1,3 @@
+${PODS_ROOT}/Target Support Files/Pods-GoodWeather Rx/Pods-GoodWeather Rx-frameworks.sh
+${BUILT_PRODUCTS_DIR}/RxCocoa/RxCocoa.framework
+${BUILT_PRODUCTS_DIR}/RxSwift/RxSwift.framework
